@@ -1,96 +1,52 @@
 ﻿namespace AdvancedCSharpLibraries
 {
     using System;
-    using System.IO;
-    using System.Linq;
-
+    using System.Collections.Generic;
+    
     public class FileSystemVisitor
     {
-        private readonly string _path;
-        private readonly FiltrationOptions _option;
 
-        private Action<string, FiltrationOptions> SearchRuner { get; set; }
+        public delegate List<(string fileName, string folderName)> FiltrationEventHandler();
+        private event FiltrationEventHandler _filtrationEvent;
 
-        private delegate void SearchInformation(string message);
+        private delegate void StartOrFinishAction(string message);
+        private event StartOrFinishAction _startOrFinishEvent;
 
-        private event SearchInformation Notify;
-
-        public FileSystemVisitor(string path, FiltrationOptions option)
+        public FileSystemVisitor(FiltrationEventHandler eventHandler)
         {
-            _path = path;
-            _option = option;
+            _filtrationEvent = eventHandler;
         }
 
-        public void RunSearch()
+        public List<(string fileName, string folderName)> LaunchEvent()
         {
-            Notify += GetProgressInformation;
-            Notify?.Invoke("Search start...");
-            SearchRuner += Search;
-            Notify?.Invoke("Search result: ");
-            SearchRuner?.Invoke(_path, _option);
-            Notify?.Invoke("Search finish");
-        }
-
-        public void Search(string path, FiltrationOptions option)
-        {
-            if(string.IsNullOrEmpty(path))
+            if (_filtrationEvent != null)
             {
+                _startOrFinishEvent += GenerateMessage;
+                _startOrFinishEvent.Invoke("Start working");
+                var result = _filtrationEvent.Invoke();
+                foreach (var item in result)
+                {
+                    Console.WriteLine(item);
+                }
+                _startOrFinishEvent.Invoke("Finish working");
+                return result;
 
             }
-
-            var filterOption = GetFiltrationOption((int)option);
-            var directories = GetAllDirectory(path).ToList();
-            var files = GetAllFiles(path, filterOption).ToList();
-
-            Notify?.Invoke($"Directories: {Environment.NewLine}");
-
-            foreach (var directory in directories)
+            else
             {
-
-                Notify?.Invoke(directory);
-
+                _startOrFinishEvent += GenerateMessage;
+                _startOrFinishEvent.Invoke("Filtration function not found");
+                return null;
             }
-            
-            Notify?.Invoke($"Files: {Environment.NewLine}");
-            foreach (var file in files)
-            {
-                Notify?.Invoke(file);
-            }
+
+
         }
 
-        public string[] GetAllDirectory(string path)
-        {
-            string[] ReultSearch = Directory.GetDirectories(path, "*", SearchOption.AllDirectories);
-            return ReultSearch;
-        }
-
-        public string[] GetAllFiles(string path, string pattern)
-        {
-            string[] ReultSearch = Directory.GetFiles(path, pattern, SearchOption.AllDirectories);
-            return ReultSearch;
-        }
-
-        public string GetFiltrationOption(int filtrationOptions)
-        {
-            switch (filtrationOptions)
-            {
-                case (int)FiltrationOptions.AllFiles:
-                    return "*";
-                case (int)FiltrationOptions.DOC:
-                    return "*.docx";
-                case (int)FiltrationOptions.XLSX:
-                    return "*.xlsx";
-                case (int)FiltrationOptions.TXT:
-                    return "*.txt";
-                default:
-                    throw new ArgumentException("Passed value does not exist");
-
-            }
-        }
-
-        private void GetProgressInformation(string message)
+        private void GenerateMessage(string message)
         {
             Console.WriteLine(message);
         }
+        
+
     }
 }

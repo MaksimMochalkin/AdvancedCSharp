@@ -5,7 +5,10 @@ namespace AdvancedCSharpLibrariesTests
     using AdvancedCSharpLibraries;
     using NUnit.Framework;
     using Shouldly;
+    using System.Collections.Generic;
+    using System.IO;
     using System.Linq;
+    using static AdvancedCSharpLibraries.FileSystemVisitor;
 
     [TestFixture]
     public class FileSystemVisitorTests
@@ -16,46 +19,26 @@ namespace AdvancedCSharpLibrariesTests
         [Test]
         public void ShouldReturnAllDirectoriesAndFiels()
         {
-            var fileSystemVisitor = new FileSystemVisitor(_path, FiltrationOptions.AllFiles);
-            Assert.DoesNotThrow(() => fileSystemVisitor.RunSearch());
+            var del = new FiltrationEventHandler(() =>
+            {
+                string[] files = Directory.GetFiles(_path, "*", SearchOption.AllDirectories);
+                var result = new List<(string fileName, string folderName)>();
+                foreach (var file in files)
+                {
+                    var fi = new FileInfo(file);
+                    var name = fi.Name;
+                    var dirname = fi.Directory.Name;
+                    result.Add((name, dirname));
+                }
+
+                return result;
+            });
+
+            var FSV = new FileSystemVisitor(del);
+            var result = FSV.LaunchEvent();
+            result.ShouldNotBeNull();
         }
 
-        [Test]
-        public void ShouldReturnAllDirectories()
-        {
-            var fileSystemVisitor = new FileSystemVisitor(_path, FiltrationOptions.AllFiles);
-            var directories = fileSystemVisitor.GetAllDirectory(_path).ToList();
-
-            directories.Count.ShouldBe(3);
-        }
-
-        [Test]
-        public void ShouldReturnAllFiles()
-        {
-            var fileSystemVisitor = new FileSystemVisitor(_path, FiltrationOptions.AllFiles);
-            var searchPattern = fileSystemVisitor.GetFiltrationOption((int)FiltrationOptions.AllFiles);
-            var files = fileSystemVisitor.GetAllFiles(_path, searchPattern).ToList();
-
-            files.Count.ShouldBe(12);
-        }
-
-        [Test]
-        public void ShouldReturnSearchOption()
-        {
-            var fileSystemVisitor = new FileSystemVisitor(_path, FiltrationOptions.AllFiles);
-            var searchPattern = fileSystemVisitor.GetFiltrationOption((int)FiltrationOptions.TXT);
-            
-            searchPattern.ShouldBe("*.txt");
-        }
-
-        [Test]
-        public void ShouldThrowFiltrationOptionsException()
-        {
-            var fileSystemVisitor = new FileSystemVisitor(_path, FiltrationOptions.AllFiles);
-            var searchPattern = fileSystemVisitor.GetFiltrationOption((int)FiltrationOptions.AllFiles);
-            var exception = Assert.Throws<ArgumentException>(() => fileSystemVisitor.GetFiltrationOption(5));
-
-            Assert.That(exception.Message, Is.SupersetOf("Passed value does not exist"));
-        }
+        
     }
 }
